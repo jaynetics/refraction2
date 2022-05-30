@@ -1,10 +1,11 @@
 require 'rack'
-require 'uri'
+require_relative 'refraction/version'
 
 class Refraction
-
   class Request < Rack::Request
     attr_reader :action, :status, :message
+
+    # backward compatibility: support URI::HTTP component names
     def method; request_method; end
     def query;  query_string;   end
 
@@ -61,26 +62,20 @@ class Refraction
       @re_location || url
     end
 
+    # use original request's values when not set explicitly
     def scheme;       @re_scheme || super; end
     def host;         @re_host   || super; end
     def path;         @re_path   || super; end
     def query_string; @re_query  || super; end
 
+    # changing the scheme or host means use default port instead of port in original request
     def port
-      @re_port || ((@re_scheme || @re_host) && default_port) || super
-    end
-
-    def default_port
-      case scheme
-      when "http"  ; 80
-      when "https" ; 443
-      end
+      @re_port || ((@re_scheme || @re_host) && DEFAULT_PORTS[scheme]) || super
     end
 
     def http_host
-      self.port ? "#{self.host}:#{self.port}" : self.host
+      port ? "#{host}:#{port}" : host
     end
-
   end ### class Request
 
   def self.configure(&block)
@@ -100,38 +95,25 @@ class Refraction
   end
 
   def call(env)
-    if self.rules
-      request = Request.new(env)
+    return @app.call(env) unless rules
 
-      self.rules.call(request)
+    request = Request.new(env)
+    rules.call(request)
 
-      case request.action
-      when :permanent, :found, :respond
-        request.response
-      when :rewrite
-        env["rack.url_scheme"]  = request.scheme
-        env["HTTP_HOST"]        = request.http_host
-        env["SERVER_NAME"]      = request.host
-        env["HTTP_PORT"]        = request.port if request.port
-        env["PATH_INFO"]        = request.path
-        env["QUERY_STRING"]     = request.query
-        env["REQUEST_URI"]      = request.fullpath
-        @app.call(env)
-      else
-        @app.call(env)
-      end
+    case request.action
+    when :permanent, :found, :respond
+      request.response
+    when :rewrite
+      env["rack.url_scheme"]  = request.scheme
+      env["HTTP_HOST"]        = request.http_host
+      env["SERVER_NAME"]      = request.host
+      env["HTTP_PORT"]        = request.port if request.port
+      env["PATH_INFO"]        = request.path
+      env["QUERY_STRING"]     = request.query
+      env["REQUEST_URI"]      = request.fullpath
+      @app.call(env)
     else
       @app.call(env)
-    end
-  end
-end
-
-# Rack version compatibility shim
-
-if Rack.release == "1.0"
-  class Rack::Request
-    def path
-      script_name + path_info
     end
   end
 end

@@ -1,5 +1,9 @@
-Refraction
-==========
+# Refraction2
+
+`refraction2` is a Rack 2.2+ compatible re-release and drop-in replacement for
+[joshsusser/refraction](https://github.com/joshsusser/refraction).
+
+## Original README
 
 Refraction is a Rack middleware replacement for `mod_rewrite`. It can rewrite URLs before they are
 processed by your web application, and can redirect using 301 and 302 status codes. Refraction is

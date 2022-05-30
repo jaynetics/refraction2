@@ -1,7 +1,5 @@
-require File.join(File.dirname(__FILE__), "spec_helper")
-require File.join(File.dirname(__FILE__), "..", "lib", "refraction")
-
 describe Refraction do
+  let(:app) { double('app') }
 
   describe "if no rules have been configured" do
     before do
@@ -10,13 +8,12 @@ describe Refraction do
 
     it "does nothing" do
       env = Rack::MockRequest.env_for('http://bar.com/about', :method => 'get')
-      app = mock('app')
-      app.should_receive(:call) { |resp|
-        resp['rack.url_scheme'].should == 'http'
-        resp['SERVER_NAME'].should == 'bar.com'
-        resp['PATH_INFO'].should == '/about'
+      expect(app).to receive(:call) do |resp|
+        expect(resp['rack.url_scheme']).to eq 'http'
+        expect(resp['SERVER_NAME']).to eq 'bar.com'
+        expect(resp['PATH_INFO']).to eq '/about'
         [200, {}, ["body"]]
-      }
+      end
       response = Refraction.new(app).call(env)
     end
   end
@@ -35,15 +32,13 @@ describe Refraction do
     it "should be set to / if empty" do
       env = Rack::MockRequest.env_for('http://bar.com', :method => 'get')
       env['PATH_INFO'] = '/'
-      app = mock('app')
       response = Refraction.new(app).call(env)
-      response[0].should == 301
-      response[1]['Location'].should == "http://yes.com/"
+      expect(response[0]).to eq 301
+      expect(response[1]['Location']).to eq "http://yes.com/"
     end
   end
 
   describe "permanent redirection" do
-
     describe "using string arguments" do
       before do
         Refraction.configure do |req|
@@ -53,10 +48,9 @@ describe Refraction do
 
       it "should redirect everything to foo.com" do
         env = Rack::MockRequest.env_for('http://bar.com', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should == "http://foo.com/bar?baz"
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to eq "http://foo.com/bar?baz"
       end
     end
 
@@ -69,26 +63,23 @@ describe Refraction do
 
       it "should redirect http://bar.com to http://foo.com" do
         env = Rack::MockRequest.env_for('http://bar.com', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should == "http://foo.com/bar?baz"
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to eq "http://foo.com/bar?baz"
       end
 
       it "should redirect https://bar.com to https://foo.com" do
         env = Rack::MockRequest.env_for('https://bar.com', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should == "https://foo.com/bar?baz"
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to eq "https://foo.com/bar?baz"
       end
 
       it "should clear the port unless set explicitly" do
         env = Rack::MockRequest.env_for('http://bar.com:3000/', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should == "http://foo.com/bar?baz"
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to eq "http://foo.com/bar?baz"
       end
     end
 
@@ -101,70 +92,64 @@ describe Refraction do
 
       it "should not clear the port" do
         env = Rack::MockRequest.env_for('http://bar.com:3000/', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should == "http://bar.com:3000/bar?baz"
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to eq "http://bar.com:3000/bar?baz"
       end
     end
 
     describe "with or without port number" do
-    before(:each) do
-      Refraction.configure do |req|
-        case req.host 
-        when "asterix.example.com"
-          req.permanent! :path => "/potion#{req.path}"
-        when "obelix.example.com"
-          req.permanent! :host => "menhir.example.com"
-        when "getafix.example.com"
-          req.permanent! :scheme => "https"
-        when "dogmatix.example.com"
-          req.permanent! :port => 3001
+      before(:each) do
+        Refraction.configure do |req|
+          case req.host
+          when "asterix.example.com"
+            req.permanent! :path => "/potion#{req.path}"
+          when "obelix.example.com"
+            req.permanent! :host => "menhir.example.com"
+          when "getafix.example.com"
+            req.permanent! :scheme => "https"
+          when "dogmatix.example.com"
+            req.permanent! :port => 3001
+          end
         end
       end
-    end
 
       it "should include port in Location if request had a port and didn't change scheme, host, or port" do
         env = Rack::MockRequest.env_for('http://asterix.example.com:3000/1', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should include("asterix.example.com:3000")
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to include("asterix.example.com:3000")
       end
 
       it "should not include port in Location if request didn't specify a port" do
         env = Rack::MockRequest.env_for('http://asterix.example.com/1', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should include("asterix.example.com")
-        response[1]['Location'].should_not include(":3000")
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to include("asterix.example.com")
+        expect(response[1]['Location']).not_to include(":3000")
       end
 
       it "should remove port from Location if host was changed" do
         env = Rack::MockRequest.env_for('http://obelix.example.com:3000/1', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should include("menhir.example.com")
-        response[1]['Location'].should_not include(":3000")
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to include("menhir.example.com")
+        expect(response[1]['Location']).not_to include(":3000")
       end
 
       it "should remove port from Location if scheme was changed" do
         env = Rack::MockRequest.env_for('http://getafix.example.com:3000/1', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should include("getafix.example.com")
-        response[1]['Location'].should_not include(":3000")
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to include("getafix.example.com")
+        expect(response[1]['Location']).not_to include(":3000")
       end
 
       it "should change port in Location if port was changed" do
         env = Rack::MockRequest.env_for('http://dogmatix.example.com:3000/1', :method => 'get')
-        app = mock('app')
         response = Refraction.new(app).call(env)
-        response[0].should == 301
-        response[1]['Location'].should include("dogmatix.example.com:3001")
+        expect(response[0]).to eq 301
+        expect(response[1]['Location']).to include("dogmatix.example.com:3001")
       end
     end
   end
@@ -180,21 +165,19 @@ describe Refraction do
 
     it "should temporarily redirect to feedburner.com" do
       env = Rack::MockRequest.env_for('http://bar.com/users/josh/blog.atom', :method => 'get')
-      app = mock('app')
       response = Refraction.new(app).call(env)
-      response[0].should == 302
-      response[1]['Location'].should == "http://feeds.pivotallabs.com/pivotallabs/josh.atom"
+      expect(response[0]).to eq 302
+      expect(response[1]['Location']).to eq "http://feeds.pivotallabs.com/pivotallabs/josh.atom"
     end
 
     it "should not redirect when no match" do
       env = Rack::MockRequest.env_for('http://bar.com/users/sam/blog.rss', :method => 'get')
-      app = mock('app')
-      app.should_receive(:call) { |resp|
-        resp['rack.url_scheme'].should == 'http'
-        resp['SERVER_NAME'].should == 'bar.com'
-        resp['PATH_INFO'].should == '/users/sam/blog.rss'
+      expect(app).to receive(:call) do |resp|
+        expect(resp['rack.url_scheme']).to eq 'http'
+        expect(resp['SERVER_NAME']).to eq 'bar.com'
+        expect(resp['PATH_INFO']).to eq '/users/sam/blog.rss'
         [200, {}, ["body"]]
-      }
+      end
       response = Refraction.new(app).call(env)
     end
   end
@@ -210,25 +193,23 @@ describe Refraction do
 
     it "should rewrite subdomain to scope the path for matching subdomains" do
       env = Rack::MockRequest.env_for('http://tweed.example.com', :method => 'get')
-      app = mock('app')
-      app.should_receive(:call) { |resp|
-        resp['rack.url_scheme'].should == 'http'
-        resp['SERVER_NAME'].should == 'example.com'
-        resp['PATH_INFO'].should == '/tweed'
+      expect(app).to receive(:call) do |resp|
+        expect(resp['rack.url_scheme']).to eq 'http'
+        expect(resp['SERVER_NAME']).to eq 'example.com'
+        expect(resp['PATH_INFO']).to eq '/tweed'
         [200, {}, ["body"]]
-      }
+      end
       Refraction.new(app).call(env)
     end
 
     it "should not rewrite if the subdomain does not match" do
       env = Rack::MockRequest.env_for('http://foo.example.com', :method => 'get')
-      app = mock('app')
-      app.should_receive(:call) { |resp|
-        resp['rack.url_scheme'].should == 'http'
-        resp['SERVER_NAME'].should == 'foo.example.com'
-        resp['PATH_INFO'].should == '/'
+      expect(app).to receive(:call) do |resp|
+        expect(resp['rack.url_scheme']).to eq 'http'
+        expect(resp['SERVER_NAME']).to eq 'foo.example.com'
+        expect(resp['PATH_INFO']).to eq '/'
         [200, {}, ["body"]]
-      }
+      end
       Refraction.new(app).call(env)
     end
   end
@@ -242,12 +223,11 @@ describe Refraction do
 
     it "should respond with status, headers and content" do
       env = Rack::MockRequest.env_for('http://example.com', :method => 'get')
-      app = mock('app')
       response = Refraction.new(app).call(env)
-      response[0].should == 503
-      response[1]['Content-Length'].to_i.should == "Site down for maintenance.".length
-      response[1]['Content-Type'].should == "text/plain"
-      response[2].should == ["Site down for maintenance."]
+      expect(response[0]).to eq 503
+      expect(response[1]['Content-Length'].to_i).to eq "Site down for maintenance.".length
+      expect(response[1]['Content-Type']).to eq "text/plain"
+      expect(response[2]).to eq ["Site down for maintenance."]
     end
   end
 
@@ -265,10 +245,9 @@ describe Refraction do
     it "should expose environment settings" do
       env = Rack::MockRequest.env_for('http://foo.com/', :method => 'get')
       env['HTTP_USER_AGENT'] = 'FeedBurner'
-      app = mock('app')
       response = Refraction.new(app).call(env)
-      response[0].should == 301
-      response[1]['Location'].should == "http://yes.com/"
+      expect(response[0]).to eq 301
+      expect(response[1]['Location']).to eq "http://yes.com/"
     end
   end
 end
