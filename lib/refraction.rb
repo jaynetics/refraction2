@@ -73,6 +73,10 @@ class Refraction
       @re_port || ((@re_scheme || @re_host) && DEFAULT_PORTS[scheme]) || super
     end
 
+    def host_with_port
+      port.nil? || port == DEFAULT_PORTS[scheme] ? host : "#{host}:#{port}"
+    end
+
     def http_host
       port ? "#{host}:#{port}" : host
     end
