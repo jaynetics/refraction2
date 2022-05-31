@@ -3,6 +3,8 @@
 `refraction2` is a Rack 2.2+ compatible re-release and drop-in replacement for
 [joshsusser/refraction](https://github.com/joshsusser/refraction).
 
+For differences from the original, see [CHANGELOG.md](./CHANGELOG.md).
+
 ## Original README
 
 Refraction is a Rack middleware replacement for `mod_rewrite`. It can rewrite URLs before they are
